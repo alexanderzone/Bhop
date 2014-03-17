@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<!-- saved from url=(0058)http://oos.moxiecode.com/js_webgl/ray_collision/index.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<title>Ray collision test</title>
+		<meta charset="utf-8">
+		<link rel="stylesheet" type="text/css" href="css/style.css">
+	<style type="text/css"></style></head>
+	
+	<body cz-shortcut-listen="true">
+
+		<div id="infobutton">
+			<a href="javascript:toggleInfo()"><img src="css/textures/i.png" border="0"></a>
+		</div>
+		<div id="info">
+				<b>Ray collision test - WebGL(html5)</b><br>
+				Arrowkeys to move. Space to jump.
+				<p>A test to do some sort of collision checking. By shooting a ray and see if it hits a mesh.<br>It's probably a stupid/ineffective way of doing this, don't know how these things are<br>usually dealt with when it comes to 3d.</p>
+				Done using <a href="https://github.com/mrdoob/three.js" target="_blank">three.js</a>.
+				<p><b>Note.</b> You need a modern browser that supports WebGL for this to run the way it is intended.<br>
+				For example. <a href="http://www.google.com/landing/chrome/beta/" target="_blank">Google Chrome 9+</a> or <a href="http://www.mozilla.com/firefox/beta/" target="_blank">Firefox 4+</a>.</p>
+				<font color="#777777">(C) OutsideOfSociety 2010.
+		</font></div><font color="#777777">
+
+		<script type="text/javascript" src="js/ThreeExtras.js"></script>
+
+		<script type="text/javascript" src="js/keys.js"></script>
+
+		<script type="text/javascript" src="js/RequestAnimationFrame.js"></script>
+		<script type="text/javascript" src="js/Stats.js"></script>
+		<script type="text/javascript" src="js/info.js"></script>
+
+
+		<script type="text/javascript">
+
+			var SCREEN_WIDTH = window.innerWidth;
+			var SCREEN_HEIGHT = window.innerHeight;
+			var FLOOR = -250;
+
+			var container;
+			var stats;
+
+			var camera;
+			var scene;
+			var webglRenderer;
+
+			var mesh, zmesh, lightMesh, geometry;
+			
+			var directionalLight, pointLight;
+			
+			var mouseX = 0;
+			var mouseY = 0;
+
+			var windowHalfX = window.innerWidth >> 1;
+			var windowHalfY = window.innerHeight >> 1;
+
+			var render_gl = 1;
+			var has_gl = 0;
+			
+			var cubeRefMesh;
+			var collideMesh;
+
+			var r = 0;
+			
+			var gravity = 1;
+			var yspeed = 0;
+			var onGround = true;
+
+			init(), animate();
+				
+			
+				
+			
+
+			function addMesh( geometry, scale, x, y, z, rx, ry, rz, material ) {
+				
+				mesh = new THREE.Mesh( geometry, material );
+				mesh.scale.x = mesh.scale.y = mesh.scale.z = scale;
+				mesh.position.x = x;
+				mesh.position.y = y;
+				mesh.position.z = z;
+				mesh.rotation.x = rx;
+				mesh.rotation.y = ry;
+				mesh.rotation.z = rz;
+				mesh.overdraw = true;
+				mesh.doubleSided = false;
+				mesh.updateMatrix();
+				scene.addObject(mesh);
+				
+				return mesh;
+			
+			}
+			
+			function init() {
+
+				container = document.createElement('div');
+				document.body.appendChild(container);
+				
+				var aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+
+				camera = new THREE.Camera( 75, aspect, 1, 100000 );
+				camera.position.z = 600;
+				camera.position.x = 0;
+				camera.position.y = 200;
+
+				camera.updateMatrix();
+
+				scene = new THREE.Scene();
+
+				// LIGHTS
+
+				var ambient = new THREE.AmbientLight( 0x101010 );
+				scene.addLight( ambient );
+
+				directionalLight = new THREE.DirectionalLight( 0xffffff, 1.0 );
+				directionalLight.position.x = 1;
+				directionalLight.position.y = 1;
+				directionalLight.position.z = 2;
+				directionalLight.position.normalize();
+				scene.addLight( directionalLight );
+
+				pointLight = new THREE.PointLight( 0x666666 );
+				pointLight.position.x = 0;
+				pointLight.position.y = 0;
+				pointLight.position.z = 0;
+				scene.addLight( pointLight );
+				
+				var cubeRef = new Cube( 100, 100, 100, 1, 1 );
+
+				cubeRefMesh = addMesh( cubeRef, 1,  -300, FLOOR+50, 0, 0,0,0, new THREE.MeshLambertMaterial( { color: 0xFF0000 } ) );
+				camera.target = cubeRefMesh;
+
+				var collideCube = new Cube( 20, 20, 20, 1, 1 );
+				collideMesh = addMesh( collideCube, 1,  -300, FLOOR+5000, 0, 0,0,0, new THREE.MeshLambertMaterial( { color: 0xFF0000 } ) );
+
+				var cube = new Cube( 300, 300, 300, 1, 1 );
+				addMesh( cube, 1,  0, FLOOR+150, 0, 0,1.57,0, getMaterial() );
+				addMesh( cube, 1,  300, FLOOR+150+300, 0, 0,1.57,0, getMaterial() );
+				addMesh( cube, 1,  600, FLOOR+150+600, 0, 0,1.57,0, getMaterial() );
+
+				addMesh( cube, 1,  0, FLOOR+150, -1500, 0,1.57,0, getMaterial() );
+				addMesh( cube, 1,  -600, FLOOR+150, -1500, 0,1.57,0, getMaterial() );
+				addMesh( cube, 1,  -1200, FLOOR+150+300, -1500, 0,1.57,0, getMaterial(true) );
+
+				addMesh( cube, 1,  0, FLOOR+150, -2100, 0,1.57,0, getMaterial() );
+
+				plane = new Plane( 100, 100, 15, 10 );
+				
+				for(var i=0; i<plane.uvs.length; i++) {
+					var uvs = plane.uvs[i];
+					for ( j = 0, jl = uvs.length; j < jl; j++ ) {
+						uvs[j].u *= 10;
+						uvs[j].v *= 10;
+					}
+					
+				}
+
+				addMesh( plane, 100,  0, FLOOR, 0, -1.57,0,0, getFloorMaterial() );
+
+				try {
+					webglRenderer = new THREE.WebGLRenderer( scene );
+					webglRenderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+					container.appendChild( webglRenderer.domElement );
+					has_gl = 1;
+				}
+				catch (e) {
+					// need webgl
+					document.getElementById('info').innerHTML = "<P><BR><B>Note.</B> You need a modern browser that supports WebGL for this to run the way it is intended.<BR>For example. <a href='http://www.google.com/landing/chrome/beta/' target='_blank'>Google Chrome 9+</a> or <a href='http://www.mozilla.com/firefox/beta/' target='_blank'>Firefox 4+</a>.</P><CENTER><BR><img src='../general/WebGL_logo.png' border='0'></CENTER>";
+					document.getElementById('info').style.display = "block";
+					return;
+				}
+
+
+				stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = '0px';
+				stats.domElement.style.zIndex = 100;
+				container.appendChild( stats.domElement );
+				
+				document.addEventListener( 'keydown', keyD, false );
+				document.addEventListener( 'keyup', keyU, false );
+			}
+			
+			function getMaterial (qmark) {
+				var imageTextureMaterial = new THREE.MeshLambertMaterial( { map: new THREE.Texture(), shading: THREE.FlatShading } );
+				var img = new Image();
+				imageTextureMaterial.map.image = img;
+				img.onload = function () {
+					imageTextureMaterial.map.image.loaded = 1;
+				};
+				if (qmark) {
+					img.src = "css/textures/qmark1.png";
+				} else {
+					img.src = "css/textures/rock.png";
+				}
+				return imageTextureMaterial;
+			}
+
+
+			function getFloorMaterial () {
+				var floorTextureMaterial = new THREE.MeshPhongMaterial( { map: new THREE.Texture(null, THREE.UVMapping, THREE.RepeatWrapping, THREE.RepeatWrapping), ambient: 0xCCCCCC, specular: 0x666666, shininess: 90, shading: THREE.SmoothShading } );
+
+				var img = new Image();
+				floorTextureMaterial.map.image = img;
+				img.onload = function () {
+					floorTextureMaterial.map.image.loaded = 1;
+				};
+				img.src = "css/textures/grid.png";
+
+				return floorTextureMaterial;
+			}
+
+			function control() {
+				var speed = 10;
+				var halfSize = 50;
+				var nearHalfSize = halfSize-5;
+
+				if (keyUp) {
+					cubeRefMesh.position.z -= speed;
+				}
+				if (keyDown) {
+					cubeRefMesh.position.z += speed;
+				}
+				if (keyLeft) {
+					cubeRefMesh.position.x -= speed;
+				}
+				if (keyRight) {
+					cubeRefMesh.position.x += speed;
+				}
+				if (keySpace && onGround) {
+					yspeed = 30;
+					onGround = false;
+				}
+			
+				collideMesh.position.y = 6000;
+				
+				onGround = false;
+				// y
+				yspeed -= gravity;
+				cubeRefMesh.position.y += yspeed;
+				
+				var down_vector = new THREE.Vector3( 0, -1, 0 );
+				var up_vector = new THREE.Vector3( 0, 1, 0 );
+
+				var bl = new THREE.Vector3( cubeRefMesh.position.x-halfSize, cubeRefMesh.position.y, cubeRefMesh.position.z-halfSize );
+				var br = new THREE.Vector3( cubeRefMesh.position.x+halfSize, cubeRefMesh.position.y, cubeRefMesh.position.z-halfSize );
+				var fl = new THREE.Vector3( cubeRefMesh.position.x-halfSize, cubeRefMesh.position.y, cubeRefMesh.position.z+halfSize );
+				var fr = new THREE.Vector3( cubeRefMesh.position.x+halfSize, cubeRefMesh.position.y, cubeRefMesh.position.z+halfSize );
+				
+				// down
+				if (yspeed < 0) {
+					// bl
+					var bl_ray = new THREE.Ray( bl, down_vector );
+					var bl_intersects = bl_ray.intersectScene( scene );
+					if ( bl_intersects.length > 0 && bl_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.y = bl_intersects[0].point.y+halfSize;
+						onGround = true;
+					}
+					// br
+					var br_ray = new THREE.Ray( br, down_vector );
+					var br_intersects = br_ray.intersectScene( scene );
+					if ( br_intersects.length > 0 && br_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.y = br_intersects[0].point.y+halfSize;
+						onGround = true;
+					}
+					// fl
+					var fl_ray = new THREE.Ray( fl, down_vector );
+					var fl_intersects = fl_ray.intersectScene( scene );
+					if ( fl_intersects.length > 0 && fl_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.y = fl_intersects[0].point.y+halfSize;
+						onGround = true;
+					}	
+					// fr
+					var fr_ray = new THREE.Ray( fr, down_vector );
+					var fr_intersects = fr_ray.intersectScene( scene );
+					if ( fr_intersects.length > 0 && fr_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.y = fr_intersects[0].point.y+halfSize;
+						onGround = true;
+					}	
+				}
+				// up
+				if (yspeed > 0) {
+					// bl
+					var bl_ray = new THREE.Ray( bl, up_vector );
+					var bl_intersects = bl_ray.intersectScene( scene );
+					if ( bl_intersects.length > 0 && bl_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.y = bl_intersects[0].point.y-halfSize;
+						yspeed = 0;
+					}
+					// br
+					var br_ray = new THREE.Ray( br, up_vector );
+					var br_intersects = br_ray.intersectScene( scene );
+					if ( br_intersects.length > 0 && br_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.y = br_intersects[0].point.y-halfSize;
+						yspeed = 0;
+					}
+					// fl
+					var fl_ray = new THREE.Ray( fl, up_vector );
+					var fl_intersects = fl_ray.intersectScene( scene );
+					if ( fl_intersects.length > 0 && fl_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.y = fl_intersects[0].point.y-halfSize;
+						yspeed = 0;
+					}	
+					// fr
+					var fr_ray = new THREE.Ray( fr, up_vector );
+					var fr_intersects = fr_ray.intersectScene( scene );
+					if ( fr_intersects.length > 0 && fr_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.y = fr_intersects[0].point.y-halfSize;
+						yspeed = 0;
+					}	
+				}
+				
+				if (onGround) {
+					yspeed = 0;
+				}
+
+				cubeRefMesh.updateMatrix();
+
+				// ray
+				var f_vector = new THREE.Vector3( 0, 0, -1 );
+				var b_vector = new THREE.Vector3( 0, 0, 1 );
+				var l_vector = new THREE.Vector3( -1, 0, 0 );
+				var r_vector = new THREE.Vector3( 1, 0, 0 );
+
+				var left = new THREE.Vector3( cubeRefMesh.position.x-halfSize, cubeRefMesh.position.y-nearHalfSize, cubeRefMesh.position.z );
+				var right = new THREE.Vector3( cubeRefMesh.position.x+halfSize, cubeRefMesh.position.y-nearHalfSize, cubeRefMesh.position.z );
+				var front = new THREE.Vector3( cubeRefMesh.position.x, cubeRefMesh.position.y-nearHalfSize, cubeRefMesh.position.z+halfSize );
+				var back = new THREE.Vector3( cubeRefMesh.position.x, cubeRefMesh.position.y-nearHalfSize, cubeRefMesh.position.z-halfSize );
+				
+				// front
+				if (keyUp) {
+					var left_ray = new THREE.Ray( left, f_vector );
+					var left_intersects = left_ray.intersectScene( scene );
+					if ( left_intersects.length > 0 && left_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.z = left_intersects[0].point.z+halfSize+1;
+					}
+					var right_ray = new THREE.Ray( right, f_vector );
+					var right_intersects = right_ray.intersectScene( scene );
+					if ( right_intersects.length > 0 && right_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.z = right_intersects[0].point.z+halfSize+1;
+					}
+				}
+				// back
+				if (keyDown) {
+					var left_ray = new THREE.Ray( left, b_vector );
+					var left_intersects = left_ray.intersectScene( scene );
+					if ( left_intersects.length > 0 && left_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.z = left_intersects[0].point.z-halfSize-1;
+					}
+					var right_ray = new THREE.Ray( right, b_vector );
+					var right_intersects = right_ray.intersectScene( scene );
+					if ( right_intersects.length > 0 && right_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.z = right_intersects[0].point.z-halfSize-1;
+					}
+				}				
+				// right
+				if (keyRight) {
+					var back_ray = new THREE.Ray( back, r_vector );
+					var back_intersects = back_ray.intersectScene( scene );
+					if ( back_intersects.length > 0 && back_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.x = back_intersects[0].point.x-halfSize-1;
+					}
+					var front_ray = new THREE.Ray( front, r_vector );
+					var front_intersects = front_ray.intersectScene( scene );
+					if ( front_intersects.length > 0 && front_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.x = front_intersects[0].point.x-halfSize-1;
+					}
+				}
+				// left
+				if (keyLeft) {
+					var back_ray = new THREE.Ray( back, l_vector );
+					var back_intersects = back_ray.intersectScene( scene );
+					if ( back_intersects.length > 0 && back_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.x = back_intersects[0].point.x+halfSize+1;
+					}
+					var front_ray = new THREE.Ray( front, l_vector );
+					var front_intersects = front_ray.intersectScene( scene );
+					if ( front_intersects.length > 0 && front_intersects[0].distance < halfSize ) {
+						cubeRefMesh.position.x = front_intersects[0].point.x+halfSize+1;
+					}
+				}
+				cubeRefMesh.updateMatrix();
+				collideMesh.position.y += 100;
+			}
+
+			function animate() {
+				requestAnimationFrame( animate );
+				loop();
+			}
+
+			function loop() {
+				control();
+
+				camera.position.x = 0+cubeRefMesh.position.x-(cubeRefMesh.position.x/5);//200*Math.cos(r);
+				camera.position.y = 200+cubeRefMesh.position.y;
+				camera.position.z = cubeRefMesh.position.z+600;
+				
+				pointLight.position.x = 1000*Math.cos(r);
+				pointLight.position.z = 1000*Math.sin(r);
+
+				r += 0.01;
+				
+				if ( render_gl && has_gl ) webglRenderer.render( scene, camera );
+
+				stats.update();
+
+			}
+
+
+		</script>
+
+	
+
+</font><div data-dynamite-selected="true"><canvas width="1280" height="679"></canvas><div style="cursor: pointer; width: 80px; opacity: 0.9; z-index: 100; position: absolute; top: 0px;"><div style="background-color: rgb(8, 8, 24); padding: 2px 0px 3px;"><div style="font-family: Helvetica, Arial, sans-serif; text-align: left; font-size: 9px; color: rgb(0, 255, 255); margin: 0px 0px 1px 3px;"><span style="font-weight:bold">23 FPS</span> (0-60)</div><canvas width="74" height="30" style="display: block; margin-left: 3px;"></canvas></div><div style="background-color: rgb(8, 24, 8); padding: 2px 0px 3px; display: none;"><div style="font-family: Helvetica, Arial, sans-serif; text-align: left; font-size: 9px; color: rgb(0, 255, 0); margin: 0px 0px 1px 3px;"><span style="font-weight:bold">37 MS</span> (2-80869)</div><canvas width="74" height="30" style="display: block; margin-left: 3px;"></canvas></div><div style="background-color: rgb(24, 8, 13); padding: 2px 0px 3px; display: none;"><div style="font-family: Helvetica, Arial, sans-serif; text-align: left; font-size: 9px; color: rgb(255, 0, 128); margin: 0px 0px 1px 3px;"><span style="font-weight:bold">MEM</span></div><canvas width="74" height="30" style="display: block; margin-left: 3px;"></canvas></div></div></div></body></html>
