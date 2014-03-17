@@ -5,3 +5,5 @@ An HTML5 remake of bunny hopping, a Source engine exploit that allows one to mov
 
 
 Use WASD to move, space or mousewheel to jump.
+
+[Try it out](http://aamistak.github.io/Bhop/ 'Try it out')
