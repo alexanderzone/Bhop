@@ -18,8 +18,7 @@
 				Done using <a href="https://github.com/mrdoob/three.js" target="_blank">three.js</a>.
 				<p><b>Note.</b> You need a modern browser that supports WebGL for this to run the way it is intended.<br>
 				For example. <a href="http://www.google.com/landing/chrome/beta/" target="_blank">Google Chrome 9+</a> or <a href="http://www.mozilla.com/firefox/beta/" target="_blank">Firefox 4+</a>.</p>
-				<font color="#777777">(C) OutsideOfSociety 2010.
-		</font></div><font color="#777777">
+				</div>
 
 		<script type="text/javascript" src="js/ThreeExtras.js"></script>
 
@@ -65,11 +64,14 @@
 			var yspeed = 0;
 			var onGround = true;
 
+			var scrolling = false;
+
 			init(), animate();
-				
-			
-				
-			
+
+			window.onmousewheel = function(e) {
+			    scrolling = true;
+      		e.preventDefault();
+			}
 
 			function addMesh( geometry, scale, x, y, z, rx, ry, rz, material ) {
 				
@@ -226,10 +228,11 @@
 				if (keyRight) {
 					cubeRefMesh.position.x += speed;
 				}
-				if (keySpace && onGround) {
+				if ((keySpace || scrolling )&& onGround) {
 					yspeed = 30;
 					onGround = false;
 				}
+				if (scrolling) scrolling = false;
 			
 				collideMesh.position.y = 6000;
 				
@@ -409,5 +412,40 @@
 		</script>
 
 	
-
-</font><div data-dynamite-selected="true"><canvas width="1280" height="679"></canvas><div style="cursor: pointer; width: 80px; opacity: 0.9; z-index: 100; position: absolute; top: 0px;"><div style="background-color: rgb(8, 8, 24); padding: 2px 0px 3px;"><div style="font-family: Helvetica, Arial, sans-serif; text-align: left; font-size: 9px; color: rgb(0, 255, 255); margin: 0px 0px 1px 3px;"><span style="font-weight:bold">23 FPS</span> (0-60)</div><canvas width="74" height="30" style="display: block; margin-left: 3px;"></canvas></div><div style="background-color: rgb(8, 24, 8); padding: 2px 0px 3px; display: none;"><div style="font-family: Helvetica, Arial, sans-serif; text-align: left; font-size: 9px; color: rgb(0, 255, 0); margin: 0px 0px 1px 3px;"><span style="font-weight:bold">37 MS</span> (2-80869)</div><canvas width="74" height="30" style="display: block; margin-left: 3px;"></canvas></div><div style="background-color: rgb(24, 8, 13); padding: 2px 0px 3px; display: none;"><div style="font-family: Helvetica, Arial, sans-serif; text-align: left; font-size: 9px; color: rgb(255, 0, 128); margin: 0px 0px 1px 3px;"><span style="font-weight:bold">MEM</span></div><canvas width="74" height="30" style="display: block; margin-left: 3px;"></canvas></div></div></div></body></html>
+<div data-dynamite-selected="true">
+  <canvas width="1280" height="679">
+  </canvas>
+  <div style="cursor: pointer; width: 80px; opacity: 0.9; z-index: 100; position: absolute; top: 0px;">
+    <div style="background-color: rgb(8, 8, 24); padding: 2px 0px 3px;">
+      <div style="font-family: Helvetica, Arial, sans-serif; text-align: left; font-size: 9px; color: rgb(0, 255, 255); margin: 0px 0px 1px 3px;">
+        <span style="font-weight:bold">
+          23 FPS
+        </span>
+        (0-60)
+      </div>
+      <canvas width="74" height="30" style="display: block; margin-left: 3px;">
+      </canvas>
+    </div>
+    <div style="background-color: rgb(8, 24, 8); padding: 2px 0px 3px; display: none;">
+      <div style="font-family: Helvetica, Arial, sans-serif; text-align: left; font-size: 9px; color: rgb(0, 255, 0); margin: 0px 0px 1px 3px;">
+        <span style="font-weight:bold">
+          37 MS
+        </span>
+        (2-80869)
+      </div>
+      <canvas width="74" height="30" style="display: block; margin-left: 3px;">
+      </canvas>
+    </div>
+    <div style="background-color: rgb(24, 8, 13); padding: 2px 0px 3px; display: none;">
+      <div style="font-family: Helvetica, Arial, sans-serif; text-align: left; font-size: 9px; color: rgb(255, 0, 128); margin: 0px 0px 1px 3px;">
+        <span style="font-weight:bold">
+          MEM
+        </span>
+      </div>
+      <canvas width="74" height="30" style="display: block; margin-left: 3px;">
+      </canvas>
+    </div>
+  </div>
+</div>
+</body>
+</html>
