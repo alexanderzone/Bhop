@@ -1,4 +1,4 @@
-var KEY = { RIGHT:39, UP:38, LEFT:37, DOWN:40, SPACE:32 };
+var KEY = { UP:87, LEFT:65, DOWN:83, RIGHT:68, SPACE:32 };
 var keyLeft = false;
 var keyRight = false;
 var keyUp = false;
